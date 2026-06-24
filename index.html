@@ -164,12 +164,24 @@
         </div>
     </div>
         <script>
-        let API_KEY = localStorage.getItem("groq_api_key");
+        const GIST_ID = "ID_GIST_CỦA_BỒ";
+        const GITHUB_TOKEN = "TOKEN_GITHUB_CỦA_BỒ";
+        let API_KEY = null;
         let chatHistory = [];
         let selectedImgBase64 = null;
         let selectedImgType = null;
         let videoStream = null;
-
+        async function getGroqKey() {
+    if (API_KEY) return API_KEY;
+    try {
+        const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            headers: { "Authorization": `token ${GITHUB_TOKEN}` }
+        });
+        const data = await res.json();
+        API_KEY = JSON.parse(data.files['config.json'].content).key;
+        return API_KEY;
+    } catch(e) { console.error("Lỗi nạp Key:", e); return null; }
+}
         const SYSTEM_PROMPT = "Bạn là Neko AI, một trợ lý ảo siêu thông minh, thân thiện. Hãy luôn xưng hô là 'Tớ' hoặc 'Mình' và gọi người dùng là 'bồ' hoặc 'bạn'. Câu trả lời cần ngắn gọn, trực diện, trình bày đẹp bằng Markdown, hỗ trợ viết code chuẩn và vẽ công thức toán lý hóa chính xác bằng ký hiệu $ hoặc $$. Khi nhận được ảnh, hãy tự nhìn hình phân tích và giải thích chi tiết, không cần người dùng bóc chữ.";
 
         const chatContainer = document.getElementById("chat-container");
@@ -186,16 +198,9 @@
 
         appendMessage(" Chào bạn nhaa mình là Neko Ai trợ lý siêu đáng yêu của bạn nè !!! meo~ ⚡🌸", "ai");
 
-        if (!API_KEY) setTimeout(updateApiKey, 500);
-
         function updateApiKey() {
-            const key = prompt("Nhập Groq API Key của bồ vào đây:", API_KEY || "");
-            if (key !== null) {
-                API_KEY = key.trim();
-                localStorage.setItem("groq_api_key", API_KEY);
-                alert("Đã lưu API Key Groq mới thành công!");
-            }
-        }
+    alert("Key đang được quản lý bảo mật qua Gist rồi bồ nhé! Không cần nhập thủ công đâu.");
+}
 
         function checkBgWatermark() {
             if (chatContainer.children.length > 0) { nekoBg.style.display = "none"; } else { nekoBg.style.display = "flex"; }
@@ -289,8 +294,8 @@
 
         async function sendMessage() {
             const text = userInput.value.trim(); if (!text && !selectedImgBase64) return;
-            if (!API_KEY) { alert("Chưa cài Groq Key bồ ơi!"); updateApiKey(); return; }
-
+            const key = await getGroqKey();
+            if (!key) { alert("Chưa load được Key từ Gist bồ ơi!"); return; }
             const currentImgBase64 = selectedImgBase64; const currentImgType = selectedImgType;
             const imgSrcForChat = currentImgBase64 ? `data:${currentImgType};base64,${currentImgBase64}` : null;
 
@@ -309,10 +314,11 @@
             try {
                 const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${API_KEY}` },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` }, // Dùng biến key
                     body: JSON.stringify({
-                        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-                        "messages": messagesToSend, "temperature": 0.5
+                        "model": "llama-3.3-70b-versatile", // Nếu model cũ của bồ vẫn chạy tốt thì cứ để nguyên, không nhất thiết phải sửa
+                        "messages": messagesToSend, 
+                        "temperature": 0.5
                     })
                 });
                 const data = await response.json(); chatContainer.removeChild(loadingDiv);
