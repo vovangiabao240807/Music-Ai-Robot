@@ -269,8 +269,6 @@
         async function sendMessage() {
     const text = userInput.value.trim();
     if (!text && !selectedImgBase64) return;
-
-    // Không cần gọi getGroqKey() nữa!
     const currentImgBase64 = selectedImgBase64; 
     const currentImgType = selectedImgType;
     const imgSrcForChat = currentImgBase64 ? `data:${currentImgType};base64,${currentImgBase64}` : null;
