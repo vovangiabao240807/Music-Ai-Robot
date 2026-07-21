@@ -117,7 +117,7 @@
             margin-top: 4px;
         }
 
-        .btn-group { display: flex; gap: 12px; align-items: center; }
+        .btn-group { display: flex; gap: 8px; align-items: center; }
 
         .mic-btn {
             width: 60px;
@@ -139,19 +139,21 @@
             animation: pulse 1.5s infinite;
         }
 
-        .stop-btn {
-            padding: 6px 12px;
-            background: #ef4444;
+        .action-btn {
+            padding: 6px 10px;
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 11px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
             display: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
-        .stop-btn:active { transform: scale(0.95); }
+        .action-btn:active { transform: scale(0.95); }
+        .loop-btn { background: #3b82f6; }
+        .loop-btn.active { background: #10b981; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.5); }
+        .stop-btn { background: #ef4444; }
 
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -166,7 +168,7 @@
 
     <div class="device-container" id="robot-container">
         <div class="status-bar">
-            <span>Trợ lý music AI v3.4</span>
+            <span>Trợ lý music AI v3.5</span>
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="font-size: 11px;">Online</span>
                 <div class="wifi-dot"></div>
@@ -201,7 +203,8 @@
                 <button class="mic-btn" id="micButton" onclick="toggleListen()">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                 </button>
-                <button class="stop-btn" id="stopMusicBtn" onclick="stopMusic()">Tắt nhạc</button>
+                <button class="action-btn loop-btn" id="loopBtn" onclick="toggleLoop()">🔁 Phát lại: Tắt</button>
+                <button class="action-btn stop-btn" id="stopMusicBtn" onclick="stopMusic()">Tắt nhạc</button>
             </div>
             <div class="hint-text" id="action-hint">Chạm để nói chuyện</div>
         </div>
@@ -217,6 +220,7 @@
         const statusText = document.getElementById('status-text');
         const micButton = document.getElementById('micButton');
         const stopMusicBtn = document.getElementById('stopMusicBtn');
+        const loopBtn = document.getElementById('loopBtn');
         const actionHint = document.getElementById('action-hint');
         const musicPlayerBox = document.getElementById('musicPlayerBox');
         const audioElement = document.getElementById('audioElement');
@@ -265,7 +269,7 @@
                             messages: [
                                 {
                                     role: "system", 
-                                    content: "Bạn là hệ thống lọc tên bài hát chuyên dụng cho robot JJ Otto. Mọi câu lệnh của người dùng đều là yêu cầu tìm và phát nhạc. Nhiệm vụ của bạn là trích xuất hoặc đoán chính xác tên bài hát/ca sĩ từ câu nói của người dùng (giữ nguyên tiếng Việt nếu là bài hát Việt Nam, không tự động dịch sang tiếng Anh trừ khi người dùng đọc tên bài tiếng Anh). BẮT BUỘC trả về JSON thuần túy có cấu trúc: {\"text\": \"Ok tớ bật ngay đây!\", \"songName\": \"tên bài hát hoặc ca sĩ chuẩn xác nhất\"}"
+                                    content: "Bạn là hệ thống lọc tên bài hát chuyên dụng cho robot JJ Otto. Mọi câu lệnh của người dùng đều là yêu cầu tìm và phát nhạc. Trích xuất hoặc đoán chính xác tên bài hát/ca sĩ từ câu nói của người dùng (giữ nguyên tiếng Việt nếu là bài hát Việt Nam). BẮT BUỘC trả về JSON thuần túy có cấu trúc: {\"text\": \"Ok tớ bật ngay đây!\", \"songName\": \"tên bài hát hoặc ca sĩ chuẩn xác nhất\"}"
                                 },
                                 { role: "user", content: text }
                             ]
@@ -313,6 +317,7 @@
                                     
                                     musicPlayerBox.style.display = "flex";
                                     stopMusicBtn.style.display = "block";
+                                    loopBtn.style.display = "block";
                                     statusText.innerText = `🎵 Đang phát: ${song.trackName} - ${song.artistName}`;
                                     
                                     audioElement.play().catch(err => {
@@ -385,11 +390,23 @@
             }
         }
 
+        function toggleLoop() {
+            audioElement.loop = !audioElement.loop;
+            if (audioElement.loop) {
+                loopBtn.innerText = "🔁 Phát lại: Bật";
+                loopBtn.classList.add('active');
+            } else {
+                loopBtn.innerText = "🔁 Phát lại: Tắt";
+                loopBtn.classList.remove('active');
+            }
+        }
+
         function stopMusic() {
             audioElement.pause();
             audioElement.currentTime = 0;
             musicPlayerBox.style.display = "none";
             stopMusicBtn.style.display = "none";
+            loopBtn.style.display = "none";
             statusText.innerText = "Đã tắt nhạc. Bồ muốn nghe bài khác cứ bấm micro nhé!";
         }
 
