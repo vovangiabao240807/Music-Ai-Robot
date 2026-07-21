@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trợ lý music AI Robot </title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { 
+            background: #0b0f19; 
+            width: 100vw;
+            height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; /* Cố định hoàn toàn, chặn đứng mọi thanh cuộn */
+        }
+
+        .device-container {
+            width: 100%;
+            max-width: 380px;
+            height: 100%;
+            max-height: 750px;
+            background: #111827;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px 14px;
+            border: 3px solid #1f293d;
+            position: relative;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .wifi-dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 6px #10b981; }
+
+        .face-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .eyes-row { display: flex; gap: 40px; }
+        .eye {
+            width: 36px;
+            height: 52px;
+            background: #00f2fe;
+            border-radius: 18px;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.6);
+            transition: 0.2s ease;
+        }
+
+        .robot-active .eye { height: 16px; border-radius: 6px; background: #ec4899; box-shadow: 0 0 15px rgba(236, 72, 153, 0.8); }
+        .robot-music .eye { transform: scale(1.15); background: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.8); }
+
+        #mouth {
+            width: 60px;
+            height: 8px;
+            background: #00f2fe;
+            border-radius: 4px;
+            box-shadow: 0 0 12px rgba(0, 242, 254, 0.6);
+            transition: 0.1s;
+        }
+
+        .inpage-player {
+            background: rgba(31, 41, 55, 0.95);
+            border: 1px solid #10b981;
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            width: 100%;
+        }
+        .album-art { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .player-details { flex: 1; overflow: hidden; }
+        .track-title { color: #fff; font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-artist { color: #9ca3af; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .inpage-player audio { width: 85px; height: 26px; flex-shrink: 0; }
+
+        .dialogue-box {
+            background: rgba(31, 41, 55, 0.7);
+            border: 1px solid #374151;
+            border-radius: 12px;
+            padding: 10px 14px;
+            height: 65px;
+            overflow-y: auto;
+            color: #f3f4f6;
+            font-size: 12px;
+            line-height: 1.35;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .mic-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            border: none;
+            box-shadow: 0 6px 15px rgba(0, 242, 254, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .mic-btn:active { transform: scale(0.92); }
+        .mic-btn.listening {
+            background: linear-gradient(135deg, #f43f5e 0%, #ec4899 100%);
+            box-shadow: 0 6px 15px rgba(236, 72, 153, 0.5);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        .hint-text { color: #9ca3af; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <div class="device-container" id="robot-container">
+        <div class="status-bar">
+            <span>Trợ lý music AI v2.9</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11px;">Online</span>
+                <div class="wifi-dot"></div>
+            </div>
+        </div>
+
+        <div class="face-screen">
+            <div class="eyes-row">
+                <div class="eye"></div>
+                <div class="eye"></div>
+            </div>
+            <div id="mouth"></div>
+        </div>
+
+        <div class="inpage-player" id="musicPlayerBox">
+            <img id="albumArt" class="album-art" src="" alt="Art">
+            <div class="player-details">
+                <div class="track-title" id="trackTitle">Đang tải tên bài...</div>
+                <div class="track-artist" id="trackArtist">Ca sĩ</div>
+            </div>
+            <audio id="audioElement" controls autoplay></audio>
+        </div>
+
+        <div class="dialogue-box" id="status-text">
+            Chạm micro và nói: Để tìm kiếm bài hát nhé!
+        </div>
+
+        <div class="control-panel">
+            <button class="mic-btn" id="micButton" onclick="toggleListen()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </button>
+            <div class="hint-text" id="action-hint">Chạm để nói chuyện</div>
+        </div>
+    </div>
+
+    <script>
+        const GROQ_API_KEY = "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";
+        let isListening = false;
+        
+        const container = document.getElementById('robot-container');
+        const mouth = document.getElementById('mouth');
+        const statusText = document.getElementById('status-text');
+        const micButton = document.getElementById('micButton');
+        const actionHint = document.getElementById('action-hint');
+        const musicPlayerBox = document.getElementById('musicPlayerBox');
+        const audioElement = document.getElementById('audioElement');
+        const trackTitle = document.getElementById('trackTitle');
+        const trackArtist = document.getElementById('trackArtist');
+        const albumArt = document.getElementById('albumArt');
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const rec = new SpeechRecognition();
+        rec.lang = 'vi-VN';
+        rec.continuous = false;
+        rec.interimResults = false;
+
+        function toggleListen() {
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+
+            if (isListening) {
+                try { rec.stop(); } catch (e) {}
+                isListening = false;
+                micButton.classList.remove('listening');
+                container.classList.remove('robot-active');
+                actionHint.innerText = "Chạm để nói chuyện";
+                statusText.innerText = "Đã dừng. Chạm micro để nói tiếp!";
+                return;
+            }
+
+            try {
+                rec.start();
+            } catch (e) {
+                console.log("Khởi động lại micro:", e);
+            }
+        }
+
+        rec.onstart = () => {
+            isListening = true;
+            micButton.classList.add('listening');
+            container.classList.add('robot-active');
+            statusText.innerText = "Đang lắng nghe lệnh của bồ...";
+            actionHint.innerText = "Chạm để dừng...";
+        };
+
+        rec.onresult = async (e) => {
+            isListening = false;
+            micButton.classList.remove('listening');
+            actionHint.innerText = "Chạm để nói chuyện";
+            
+            const text = e.results[0][0].transcript;
+            statusText.innerText = `Bồ: "${text}"`;
+            
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { 
+                        "Authorization": `Bearer ${GROQ_API_KEY}`, 
+                        "Content-Type": "application/json" 
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.1-8b-instant",
+                        response_format: { type: "json_object" },
+                        messages: [
+                            {
+                                role: "system", 
+                                content: "Bạn là robot JJ Otto thông minh. Phân tích yêu cầu. Nếu người dùng muốn nghe nhạc hoặc bật bài hát nào, hãy trích xuất tên bài hát/ca sĩ đó. BẮT BUỘC trả về JSON thuần túy có cấu trúc: {\"text\": \"câu thông báo ngắn gọn kiểu như 'Ok tớ tìm và bật bài này ngay cho bồ nhé!'\", \"isMusic\": true, \"songName\": \"tên bài hát hoặc ca sĩ\"} Nếu chỉ trò chuyện bình thường: {\"text\": \"câu trả lời thông minh\", \"isMusic\": false, \"songName\": \"\"}"
+                            },
+                            { role: "user", content: text }
+                        ]
+                    })
+                });
+
+                const data = await res.json();
+                const result = JSON.parse(data.choices[0].message.content);
+
+                statusText.innerText = `JJ Otto: ${result.text}`;
+
+                const utter = new SpeechSynthesisUtterance(result.text);
+                utter.pitch = 1.0;
+                utter.rate = 1.05;
+                
+                utter.onstart = () => {
+                    container.classList.add('robot-active');
+                    animateMouth();
+                };
+                
+                utter.onend = async () => {
+                    mouth.style.height = "8px";
+                    container.classList.remove('robot-active');
+                    
+                    if (result.isMusic && result.songName) {
+                        container.classList.add('robot-music');
+                        statusText.innerText = `🔍 Đang tìm bài: ${result.songName}...`;
+                        
+                        try {
+                            const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(result.songName)}&media=music&limit=1`;
+                            const musicRes = await fetch(searchUrl);
+                            const musicData = await musicRes.json();
+                            
+                            if (musicData.results && musicData.results.length > 0) {
+                                const song = musicData.results[0];
+                                
+                                trackTitle.innerText = song.trackName;
+                                trackArtist.innerText = song.artistName;
+                                albumArt.src = song.artworkUrl100;
+                                audioElement.src = song.previewUrl;
+                                
+                                musicPlayerBox.style.display = "flex";
+                                statusText.innerText = `🎵 Đang phát: ${song.trackName} - ${song.artistName}`;
+                                
+                                audioElement.play().catch(err => {
+                                    console.log("Trình duyệt chặn autoplay audio:", err);
+                                });
+                            } else {
+                                statusText.innerText = `Không tìm thấy bài hát "${result.songName}" bồ ơi!`;
+                            }
+                        } catch (err) {
+                            console.error("Lỗi tìm nhạc:", err);
+                            statusText.innerText = "Lỗi kết nối kho nhạc rồi!";
+                        }
+                    }
+                };
+
+                window.speechSynthesis.speak(utter);
+
+            } catch (err) {
+                console.error("Lỗi:", err);
+                statusText.innerText = "Úi, hệ thống đang bận chút bồ ơi!";
+            }
+        };
+
+        rec.onerror = () => {
+            isListening = false;
+            micButton.classList.remove('listening');
+            actionHint.innerText = "Chạm để nói chuyện";
+        };
+
+        rec.onend = () => {
+            if (isListening) {
+                isListening = false;
+                micButton.classList.remove('listening');
+                actionHint.innerText = "Chạm để nói chuyện";
+                if (!window.speechSynthesis.speaking) {
+                    container.classList.remove('robot-active');
+                }
+            }
+        };
+
+        function animateMouth() {
+            if (window.speechSynthesis.speaking) {
+                mouth.style.height = (Math.random() * 16 + 4) + "px";
+                setTimeout(animateMouth, 100);
+            } else {
+                mouth.style.height = "8px";
+            }
+        }
+    </script>
+</body>
+</html>
