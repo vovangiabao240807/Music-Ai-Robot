@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trợ lý music AI Robot </title>
+    <title>Trợ lý music AI Robot</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { 
@@ -14,7 +14,7 @@
             align-items: center; 
             justify-content: center; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden; /* Cố định hoàn toàn, chặn đứng mọi thanh cuộn */
+            overflow: hidden;
         }
 
         .device-container {
@@ -80,16 +80,17 @@
             border-radius: 10px;
             padding: 8px 10px;
             display: none;
-            align-items: center;
-            gap: 8px;
+            flex-direction: column;
+            gap: 6px;
             margin-bottom: 6px;
             width: 100%;
         }
+        .player-top { display: flex; align-items: center; gap: 8px; }
         .album-art { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
         .player-details { flex: 1; overflow: hidden; }
         .track-title { color: #fff; font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .track-artist { color: #9ca3af; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .inpage-player audio { width: 85px; height: 26px; flex-shrink: 0; }
+        .inpage-player audio { width: 100%; height: 26px; }
 
         .dialogue-box {
             background: rgba(31, 41, 55, 0.7);
@@ -116,6 +117,8 @@
             margin-top: 4px;
         }
 
+        .btn-group { display: flex; gap: 12px; align-items: center; }
+
         .mic-btn {
             width: 60px;
             height: 60px;
@@ -136,6 +139,20 @@
             animation: pulse 1.5s infinite;
         }
 
+        .stop-btn {
+            padding: 6px 12px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+            display: none;
+        }
+        .stop-btn:active { transform: scale(0.95); }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.08); }
@@ -149,7 +166,7 @@
 
     <div class="device-container" id="robot-container">
         <div class="status-bar">
-            <span>Trợ lý music AI v2.9</span>
+            <span>Trợ lý music AI v3.4</span>
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="font-size: 11px;">Online</span>
                 <div class="wifi-dot"></div>
@@ -165,22 +182,27 @@
         </div>
 
         <div class="inpage-player" id="musicPlayerBox">
-            <img id="albumArt" class="album-art" src="" alt="Art">
-            <div class="player-details">
-                <div class="track-title" id="trackTitle">Đang tải tên bài...</div>
-                <div class="track-artist" id="trackArtist">Ca sĩ</div>
+            <div class="player-top">
+                <img id="albumArt" class="album-art" src="" alt="Art">
+                <div class="player-details">
+                    <div class="track-title" id="trackTitle">Đang tải tên bài...</div>
+                    <div class="track-artist" id="trackArtist">Ca sĩ</div>
+                </div>
             </div>
-            <audio id="audioElement" controls autoplay></audio>
+            <audio id="audioElement" controls></audio>
         </div>
 
         <div class="dialogue-box" id="status-text">
-            Chạm micro và nói: Để tìm kiếm bài hát nhé!
+            Chạm micro và đọc tên bài hát/ca sĩ nhé!
         </div>
 
         <div class="control-panel">
-            <button class="mic-btn" id="micButton" onclick="toggleListen()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-            </button>
+            <div class="btn-group">
+                <button class="mic-btn" id="micButton" onclick="toggleListen()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+                <button class="stop-btn" id="stopMusicBtn" onclick="stopMusic()">Tắt nhạc</button>
+            </div>
             <div class="hint-text" id="action-hint">Chạm để nói chuyện</div>
         </div>
     </div>
@@ -188,11 +210,13 @@
     <script>
         const GROQ_API_KEY = "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";
         let isListening = false;
+        let isProcessing = false;
         
         const container = document.getElementById('robot-container');
         const mouth = document.getElementById('mouth');
         const statusText = document.getElementById('status-text');
         const micButton = document.getElementById('micButton');
+        const stopMusicBtn = document.getElementById('stopMusicBtn');
         const actionHint = document.getElementById('action-hint');
         const musicPlayerBox = document.getElementById('musicPlayerBox');
         const audioElement = document.getElementById('audioElement');
@@ -201,12 +225,144 @@
         const albumArt = document.getElementById('albumArt');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const rec = new SpeechRecognition();
-        rec.lang = 'vi-VN';
-        rec.continuous = false;
-        rec.interimResults = false;
+        let rec = null;
+
+        if (SpeechRecognition) {
+            rec = new SpeechRecognition();
+            rec.lang = 'vi-VN';
+            rec.continuous = false;
+            rec.interimResults = false;
+
+            rec.onstart = () => {
+                isListening = true;
+                micButton.classList.add('listening');
+                container.classList.add('robot-active');
+                statusText.innerText = "Đang nghe bồ đọc tên bài hát...";
+                actionHint.innerText = "Chạm để dừng...";
+            };
+
+            rec.onresult = async (e) => {
+                isListening = false;
+                micButton.classList.remove('listening');
+                actionHint.innerText = "Chạm để nói chuyện";
+                
+                const text = e.results[0][0].transcript.trim();
+                if (!text) return;
+
+                statusText.innerText = `Bồ: "${text}"`;
+                isProcessing = true; 
+                
+                try {
+                    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                        method: "POST",
+                        headers: { 
+                            "Authorization": `Bearer ${GROQ_API_KEY}`, 
+                            "Content-Type": "application/json" 
+                        },
+                        body: JSON.stringify({
+                            model: "llama-3.1-8b-instant",
+                            response_format: { type: "json_object" },
+                            messages: [
+                                {
+                                    role: "system", 
+                                    content: "Bạn là hệ thống lọc tên bài hát chuyên dụng cho robot JJ Otto. Mọi câu lệnh của người dùng đều là yêu cầu tìm và phát nhạc. Nhiệm vụ của bạn là trích xuất hoặc đoán chính xác tên bài hát/ca sĩ từ câu nói của người dùng (giữ nguyên tiếng Việt nếu là bài hát Việt Nam, không tự động dịch sang tiếng Anh trừ khi người dùng đọc tên bài tiếng Anh). BẮT BUỘC trả về JSON thuần túy có cấu trúc: {\"text\": \"Ok tớ bật ngay đây!\", \"songName\": \"tên bài hát hoặc ca sĩ chuẩn xác nhất\"}"
+                                },
+                                { role: "user", content: text }
+                            ]
+                        })
+                    });
+
+                    const data = await res.json();
+                    const result = JSON.parse(data.choices[0].message.content);
+
+                    statusText.innerText = `JJ Otto: ${result.text}`;
+
+                    if (window.speechSynthesis.speaking) {
+                        window.speechSynthesis.cancel();
+                    }
+
+                    const utter = new SpeechSynthesisUtterance(result.text);
+                    utter.pitch = 1.0;
+                    utter.rate = 1.05;
+                    
+                    utter.onstart = () => {
+                        container.classList.add('robot-active');
+                        animateMouth();
+                    };
+                    
+                    utter.onend = async () => {
+                        mouth.style.height = "8px";
+                        container.classList.remove('robot-active');
+                        
+                        if (result.songName) {
+                            container.classList.add('robot-music');
+                            statusText.innerText = `🔍 Đang tìm bài: ${result.songName}...`;
+                            
+                            try {
+                                const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(result.songName)}&media=music&limit=1`;
+                                const musicRes = await fetch(searchUrl);
+                                const musicData = await musicRes.json();
+                                
+                                if (musicData.results && musicData.results.length > 0) {
+                                    const song = musicData.results[0];
+                                    
+                                    trackTitle.innerText = song.trackName;
+                                    trackArtist.innerText = song.artistName;
+                                    albumArt.src = song.artworkUrl100;
+                                    audioElement.src = song.previewUrl;
+                                    
+                                    musicPlayerBox.style.display = "flex";
+                                    stopMusicBtn.style.display = "block";
+                                    statusText.innerText = `🎵 Đang phát: ${song.trackName} - ${song.artistName}`;
+                                    
+                                    audioElement.play().catch(err => {
+                                        console.log("Trình duyệt chặn autoplay audio:", err);
+                                    });
+                                } else {
+                                    statusText.innerText = `Không tìm thấy bài "${result.songName}" bồ ơi!`;
+                                }
+                            } catch (err) {
+                                console.error("Lỗi tìm nhạc:", err);
+                                statusText.innerText = "Lỗi kết nối kho nhạc rồi!";
+                            }
+                        }
+                        
+                        isProcessing = false;
+                    };
+
+                    window.speechSynthesis.speak(utter);
+
+                } catch (err) {
+                    console.error("Lỗi:", err);
+                    statusText.innerText = "Úi, hệ thống đang bận chút bồ ơi!";
+                    isProcessing = false;
+                }
+            };
+
+            rec.onerror = (e) => {
+                console.warn("Lỗi micro:", e.error);
+                isListening = false;
+                isProcessing = false;
+                micButton.classList.remove('listening');
+                actionHint.innerText = "Chạm để nói chuyện";
+            };
+
+            rec.onend = () => {
+                isListening = false;
+                micButton.classList.remove('listening');
+                actionHint.innerText = "Chạm để nói chuyện";
+                if (!window.speechSynthesis.speaking) {
+                    container.classList.remove('robot-active');
+                }
+            };
+        } else {
+            statusText.innerText = "Trình duyệt của bồ không hỗ trợ nhận diện giọng nói!";
+            micButton.disabled = true;
+        }
 
         function toggleListen() {
+            if (isProcessing || !rec) return;
+
             if (window.speechSynthesis.speaking) {
                 window.speechSynthesis.cancel();
             }
@@ -225,120 +381,17 @@
                 rec.start();
             } catch (e) {
                 console.log("Khởi động lại micro:", e);
+                isProcessing = false;
             }
         }
 
-        rec.onstart = () => {
-            isListening = true;
-            micButton.classList.add('listening');
-            container.classList.add('robot-active');
-            statusText.innerText = "Đang lắng nghe lệnh của bồ...";
-            actionHint.innerText = "Chạm để dừng...";
-        };
-
-        rec.onresult = async (e) => {
-            isListening = false;
-            micButton.classList.remove('listening');
-            actionHint.innerText = "Chạm để nói chuyện";
-            
-            const text = e.results[0][0].transcript;
-            statusText.innerText = `Bồ: "${text}"`;
-            
-            try {
-                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { 
-                        "Authorization": `Bearer ${GROQ_API_KEY}`, 
-                        "Content-Type": "application/json" 
-                    },
-                    body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
-                        response_format: { type: "json_object" },
-                        messages: [
-                            {
-                                role: "system", 
-                                content: "Bạn là robot JJ Otto thông minh. Phân tích yêu cầu. Nếu người dùng muốn nghe nhạc hoặc bật bài hát nào, hãy trích xuất tên bài hát/ca sĩ đó. BẮT BUỘC trả về JSON thuần túy có cấu trúc: {\"text\": \"câu thông báo ngắn gọn kiểu như 'Ok tớ tìm và bật bài này ngay cho bồ nhé!'\", \"isMusic\": true, \"songName\": \"tên bài hát hoặc ca sĩ\"} Nếu chỉ trò chuyện bình thường: {\"text\": \"câu trả lời thông minh\", \"isMusic\": false, \"songName\": \"\"}"
-                            },
-                            { role: "user", content: text }
-                        ]
-                    })
-                });
-
-                const data = await res.json();
-                const result = JSON.parse(data.choices[0].message.content);
-
-                statusText.innerText = `JJ Otto: ${result.text}`;
-
-                const utter = new SpeechSynthesisUtterance(result.text);
-                utter.pitch = 1.0;
-                utter.rate = 1.05;
-                
-                utter.onstart = () => {
-                    container.classList.add('robot-active');
-                    animateMouth();
-                };
-                
-                utter.onend = async () => {
-                    mouth.style.height = "8px";
-                    container.classList.remove('robot-active');
-                    
-                    if (result.isMusic && result.songName) {
-                        container.classList.add('robot-music');
-                        statusText.innerText = `🔍 Đang tìm bài: ${result.songName}...`;
-                        
-                        try {
-                            const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(result.songName)}&media=music&limit=1`;
-                            const musicRes = await fetch(searchUrl);
-                            const musicData = await musicRes.json();
-                            
-                            if (musicData.results && musicData.results.length > 0) {
-                                const song = musicData.results[0];
-                                
-                                trackTitle.innerText = song.trackName;
-                                trackArtist.innerText = song.artistName;
-                                albumArt.src = song.artworkUrl100;
-                                audioElement.src = song.previewUrl;
-                                
-                                musicPlayerBox.style.display = "flex";
-                                statusText.innerText = `🎵 Đang phát: ${song.trackName} - ${song.artistName}`;
-                                
-                                audioElement.play().catch(err => {
-                                    console.log("Trình duyệt chặn autoplay audio:", err);
-                                });
-                            } else {
-                                statusText.innerText = `Không tìm thấy bài hát "${result.songName}" bồ ơi!`;
-                            }
-                        } catch (err) {
-                            console.error("Lỗi tìm nhạc:", err);
-                            statusText.innerText = "Lỗi kết nối kho nhạc rồi!";
-                        }
-                    }
-                };
-
-                window.speechSynthesis.speak(utter);
-
-            } catch (err) {
-                console.error("Lỗi:", err);
-                statusText.innerText = "Úi, hệ thống đang bận chút bồ ơi!";
-            }
-        };
-
-        rec.onerror = () => {
-            isListening = false;
-            micButton.classList.remove('listening');
-            actionHint.innerText = "Chạm để nói chuyện";
-        };
-
-        rec.onend = () => {
-            if (isListening) {
-                isListening = false;
-                micButton.classList.remove('listening');
-                actionHint.innerText = "Chạm để nói chuyện";
-                if (!window.speechSynthesis.speaking) {
-                    container.classList.remove('robot-active');
-                }
-            }
-        };
+        function stopMusic() {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            musicPlayerBox.style.display = "none";
+            stopMusicBtn.style.display = "none";
+            statusText.innerText = "Đã tắt nhạc. Bồ muốn nghe bài khác cứ bấm micro nhé!";
+        }
 
         function animateMouth() {
             if (window.speechSynthesis.speaking) {
